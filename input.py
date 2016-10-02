@@ -19,12 +19,17 @@ NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 500
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
+#flags.DEFINE_string('train', 'tensorflow_image.csv', 'File name of train data')
 flags.DEFINE_string('train', 'tensorflow_image.csv', 'File name of train data')
 flags.DEFINE_string('test', 'test.txt', 'File name of test data')
 flags.DEFINE_string('train_dir', './tmp/', 'Directory to put the training data.')
-flags.DEFINE_integer('max_steps', 100, 'Number of steps to run trainer.')
+flags.DEFINE_integer('max_steps', 1000, 'Number of steps to run trainer.')
 flags.DEFINE_integer('batch_size', 120, 'Batch size Must divide evenly into the dataset sizes.')
 flags.DEFINE_float('learning_rate', 1e-4, 'Initial learning rate.')
+
+
+def load_data_for_test(csv, batch_size):
+  return load_data(csv, batch_size, shuffle = False, distored = False)
 
 def load_data(csv, batch_size, shuffle, distored):
   queue = tf.train.string_input_producer(csv, shuffle=shuffle)
@@ -35,27 +40,32 @@ def load_data(csv, batch_size, shuffle, distored):
 
   label = tf.cast(label, tf.int64)
   label = tf.one_hot(label, depth = 5, on_value=1.0, off_value=0.0, axis=-1)
-  
-  jpeg_r = tf.read_file('./images/' + filename)
-  image = tf.image.decode_jpeg(jpeg_r, channels=3)
-  image = tf.cast(image, tf.float32)
-  image.set_shape([IMAGE_SIZE, IMAGE_SIZE, 3])
+  image ="" 
+  try:
+    # jpeg_r = tf.read_file('./images/convert/' + filename + ".jpg")
+    jpeg_r = tf.read_file('./test_images/' + filename)
+    image = tf.image.decode_jpeg(jpeg_r, channels=3)
+    image = tf.cast(image, tf.float32)
+    image.set_shape([IMAGE_SIZE, IMAGE_SIZE, 3])
 
-  #if distored:
+    #if distored:
 
-  image = tf.image.resize_images(image, DST_INPUT_SIZE, DST_INPUT_SIZE)
-  image = tf.image.per_image_whitening(image)
+    image = tf.image.resize_images(image, DST_INPUT_SIZE, DST_INPUT_SIZE)
+    image = tf.image.per_image_whitening(image)
 
-  # Ensure that the random shuffling has good mixing properties.<Paste>
-  min_fraction_of_examples_in_queue = 0.4
-  min_queue_examples = int(NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN * min_fraction_of_examples_in_queue)
+    # Ensure that the random shuffling has good mixing properties.<Paste>
+    min_fraction_of_examples_in_queue = 0.4
+    min_queue_examples = int(NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN * min_fraction_of_examples_in_queue)
+  except:
+    print(filename + "でエラー")
+    
 
   return _generate_image_and_label_batch(
-         image,
-         label,
-         filename,
-         min_queue_examples, batch_size,
-         shuffle=shuffle)
+       image,
+       label,
+       filename,
+       min_queue_examples, batch_size,
+       shuffle=shuffle)
 
 def _generate_image_and_label_batch(image, label, filename, min_queue_examples,
                                     batch_size, shuffle):
@@ -86,6 +96,8 @@ def main(ckpt = None):
     keep_prob = tf.placeholder("float")
 
     images, labels, filename = load_data([FLAGS.train], FLAGS.batch_size, shuffle = True, distored = True)
+
+    # 推論
     logits = model.inference(images, keep_prob, DST_INPUT_SIZE, NUM_CLASS)
     loss_value = model.loss(logits, labels)
     train_op = model.training(loss_value, FLAGS.learning_rate)
@@ -121,12 +133,15 @@ def main(ckpt = None):
             summary_writer.add_summary(summary_str, step)
 
         if step % 1000 == 0 or (step + 1) == FLAGS.max_steps or loss_result ==0:
-            checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')
-            saver.save(sess, checkpoint_path, global_step=step)
+            print(1000)
 
         if loss_result == 0:
             print("loss is zero")
             break
+    print('save')
+    checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')
+    saver.save(sess, checkpoint_path, global_step=step)
+
 if __name__ == '__main__':
   ckpt = None
   if len(sys.argv) == 2:

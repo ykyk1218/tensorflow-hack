@@ -3,7 +3,7 @@
 import sys
 import os
 import csv
-import cv2
+from PIL import Image
 
 if __name__ == "__main__":
   url_list = sys.argv[1]
@@ -11,5 +11,10 @@ if __name__ == "__main__":
   csv_reader = csv.reader(r)
   for urls in csv_reader:
     filename = urls[0].split('/')[-1]
-    img = cv2.imread('images/' + filename)
-    cv2.imwrite('images/convert/' + filename + ".jpg", img)
+    print(filename)
+    if os.path.isfile('images/' + filename):
+      try:
+        img = Image.open('images/' + filename, 'r')
+        img.save('images/convert/' + filename + ".jpg", 'JPEG', quality=100, optimize=True)
+      except:
+        print(filename + "でエラー")

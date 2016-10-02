@@ -12,7 +12,7 @@ import re
 def build_url(skip=0):
   query ={}
   url = "https://api.datamarket.azure.com/Bing/Search/v1/Image"
-  query["Query"]="'ネコ'"
+  query["Query"]="'イヌ'"
   query["Market"]="'ja-JP'"
   query["$format"]="json"
   if skip != 0:
